@@ -10,8 +10,6 @@ This script also works for binary files, allowing 1) usage of regex and 2) print
 <br>
 <br>
 
-`Why did you replace the filepaths with trash instead of simply deleting the sensitive characters? Now I have to learn some RegEx...`  
-* Because PDFs seem to be memory mapped. If a PDF's per-byte mappings are off, the LUT (Lookup Table) entries in the PDF file become misaligned, causing the PDF to load/render incorrectly, causing once-visible sections to disappear after redaction.
 
 I designed this file:
 * to be robust to weird usages of slashes and backslashes in a filepath, and
@@ -22,3 +20,11 @@ The filepath of the file you want to redact (at the bottom of the Python file)
 
 ### What you *may* need to edit
 The RegEx data-finder at the top of the `stripSensitiveFilepath(...)` function, which allows you to configure your starting sentinel and your ending sentinel.
+
+<img alt="Example screenshot showing a terminal with debug-level text of a user redacting a filepath from a file's contents. Terminal shows the regex string used to perform the search, a vertically side-by-side comparison of the UTF-8 encoded bytestream found via the regex search <i>(Top)</i>, the plaintext string found via the regex search <i>(Bottom)</i>, and below those lines are the 4 possibly-different lengths of both the detected bytestream/string and its replacement bytestream/string, each length being on its own line while also containing the corresponding string that was used to generate that length value." src="assets/ExampleOfFilepathRedactionInsideFile.webp" width=1000 height=600>
+
+```
+Why did you replace the filepaths with trash instead of simply deleting the sensitive characters?
+Now I have to learn some RegEx by reading your long comments in the file...
+```  
+* Because PDFs seem to be memory mapped. If a PDF's per-byte mappings are off, the LUT (Lookup Table) entries in the PDF file become misaligned, causing the PDF to load/render incorrectly, causing once-visible sections to disappear after redaction.
