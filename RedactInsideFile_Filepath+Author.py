@@ -1,3 +1,46 @@
+"""
+DONE:
+* Redact filepaths that exist anywhere in the file (those that exist in the already-compressed format)
+* Redact Author (human names), but only from the file's metadata
+
+
+TODO:
+User-content inside the main data part of the file
+* Redact a name that the user provides, where up to one letter of the name can be missing and capitalizationn is ignored
+
+Official/Standardized parameters for PDFs
+* Redact CreationDate & CreateDate of file
+* Redact ModifyDate & ModDate (modification date) of file
+* Redact creator & Producer of file
+* Redact CreatorTool (tool that created the file, like MS Word)
+* Redact DocumentID (uuid) of file
+* Redact InstanceID (uuid) of file
+* Redact Description->`about`  of all RDF components of file
+
+Things I can look for to redact inside a PDF file (the labels/`terms` contained within a RDF document):
+* http://purl.org/dc/elements/1.1/
+  -> https://www.dublincore.org/specifications/dublin-core/dcmi-terms/
+
+
+Examples of actual metadata that I might want to scrub
+<</Author(Abraham Jose) /Creator(þÿ M i c r o s o f t ®   W o r d   f o r   M i c r o s o f t   3 6 5) 
+/CreationDate(D:20050402230748-05'00') 
+/ModDate(D:20050402230748-05'00') 
+/Producer(þÿ M i c r o s o f t ®   W o r d   f o r   M i c r o s o f t   3 6 5) >>
+
+<pdf:Producer>MicrosoftÂ® Word for Microsoft 365</pdf:Producer></rdf:Description>
+<rdf:Description rdf:about=""  xmlns:dc="http://purl.org/dc/elements/1.1/">
+<dc:creator><rdf:Seq><rdf:li>Abraham Jose</rdf:li></rdf:Seq></dc:creator></rdf:Description>
+<rdf:Description rdf:about=""  xmlns:xmp="http://ns.adobe.com/xap/1.0/">
+<xmp:CreatorTool>MicrosoftÂ® Word for Microsoft 365</xmp:CreatorTool><xmp:CreateDate>2005-04-02T23:07:48-05:00</xmp:CreateDate><xmp:ModifyDate>2005-04-02T23:07:48-05:00</xmp:ModifyDate></rdf:Description>
+<rdf:Description rdf:about=""  xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/">
+<xmpMM:DocumentID>uuid:E300DAD0-DA55-413A-B81B-BE2CC44D6513</xmpMM:DocumentID><xmpMM:InstanceID>uuid:E300DAD0-DA55-413A-B81B-BE2CC44D6513</xmpMM:InstanceID></rdf:Description>
+
+"""
+
+# NOTE:
+# If you're doing hardcore redaction, you should be looking into PyMuPDF, NOT using this program.
+
 
 def printDynamicCountdownTimer(countdownMsg:str = "", delayInSec:int = 10):
 	from time import sleep
