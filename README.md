@@ -1,18 +1,23 @@
-## `RedactFilepathInsideFile.py`
+## `RedactInsideFile_Filepath+Author.py`
 
-1) Reads a PDF file\*, then
-2) via RegEx, finds all filepaths *within the file's contents* that start with \*\*`C:/Users/` and end with \*\*`challenges/`, and then
-3) replaces all the characters in between those two sentinels with \*\*garbage characters (default is char `X`).
-* \*You specify either A) the PDF's filepath or B) a Python `raw text`/`r` string of the PDF's raw data contents that you manually provide.
+### Note
+`RedactFilepathInsideFile.py` is the deprecated redaction file, which only redacts (from the metadata) the filepaths and *not* the author's name.
+
+1) Reads a PDF file\*, then  
+2.1) via RegEx, finds all filepaths *within the file's contents* that start with \*\*`C:/Users/` and end with \*\*`challenges/`, and  
+2.2) via RegEx (roughly `<</Author(.*).*?>>` and `<dc:creator>(.*)</dc:creator>`), finds most human-name-related metadata *within the file's contents*, and then  
+3) replaces all those characters in between those two sentinels with \*\*garbage characters (default is char `X`).  
+* \*You specify either **A)** the PDF's filepath (via either console or hard-coding it) or **B)** a Python `raw text`/`r` string of the PDF's raw data contents that you manually provide.
 * \*\*These 3 strings are configurable.
 
-This script also works for binary files, allowing 1) usage of regex and 2) printing, with difficult-to-print characters (difficult according to Python at least).  
+This script also works for binary files, allowing 1) usage of regex and 2) printing, with difficult-to-print characters (difficult according to Python's typical encoder functions at least).  
 <br>
 <br>
 
 
 I designed this file:
 * to be robust to weird usages of slashes and backslashes in a filepath, and
+* to work across a few newlines (or to just tolerate a small amount of garbage whitespace) (but not too much whitespace due to Greedy RegEx over-consuming, which corrupts a PDF file, making the PDF unviewable)
 * to warn the redactor/user before the script overwrites and/or corrupts any files (like if you screw up the regex while editing it).
 
 ### What you *definitely* need to edit
