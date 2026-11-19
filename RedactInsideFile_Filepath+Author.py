@@ -70,26 +70,30 @@ def printDynamicCountdownTimer(countdownMsg:str = "", delayInSec:int = 10):
 
 
 
-def printFindAsRegex(findAsRegex_humanReadable: list[str]|str, findAsRegex_b4gap: list[str]|str, findAsRegex_gapped: list[str]|str):
-	print("\n1) findAsRegex (mentally): ")
-	if type(findAsRegex_humanReadable)==list:
-		[print("* "+s) for s in findAsRegex_humanReadable]
-	else:
-		print("*",findAsRegex_humanReadable)
+
+def printLists(titles: list[str],   list_entries: list[str] | list[list[str]]):
+	numLists, numTitles  =  len(list_entries), len(titles)
+	assert numLists == numTitles, f"Expected to have the same quantity of title as the # of lists. Received {numLists} lists and {numTitles} titles."
 	
-	print("\n2) findAsRegex (no gaps):  ")
-	if type(findAsRegex_b4gap)==list:
-		[print("* "+s) for s in findAsRegex_b4gap]
-	else:
-		print("*",findAsRegex_b4gap)
-	
-	print("\n3) findAsRegex (with gaps):")
-	if type(findAsRegex_gapped)==list:
-		[print("* "+s) for s in findAsRegex_gapped]
-	else:
-		print("*",findAsRegex_gapped)
+	# This way, each record prints at the same indention level, allowing for easier reading by user moving
+	#   their eyes straight up and down rather than linearly searching the console's output.
+	# min(80,...) is for dealing with ridiculously long titles, setting the indention at 80 characters.
+	maxTitleLen = min(80, max([len(t) for t in titles]))
+
+	for singleList, title in zip(list_entries, titles):
+		if type(singleList)==list:
+			print(f"\n{title}")
+			[print("* "+s) for s in singleList]
+		else:	# E.g., if  type(...) == str
+			print(f"\n{title:{maxTitleLen+2}}{singleList}")
 	
 	print()
+
+def printFindAsRegex(findAsRegex_humanReadable: list[str]|str, findAsRegex_b4gap: list[str]|str, findAsRegex_gapped: list[str]|str):
+	titles = ["1) findAsRegex (mentally):", "2) findAsRegex (no gaps):", "3) findAsRegex (with gaps):"]
+	list_entries = [findAsRegex_humanReadable, findAsRegex_b4gap, findAsRegex_gapped]
+	printLists(titles, list_entries)
+
 
 
 
@@ -117,7 +121,7 @@ def printDebug_callback(matchobj: re.Match, replacement:bytes, DEBUG_LVL:int, ha
 	CALLER_IS_FILEPATH = CALLER.lower() in ["filepath", "stripfilepath", "redactfilepath"]
 	CALLER_IS_AUTHOR   = CALLER.lower() in [  "author",   "stripauthor",   "redactauthor"]
 	assert not (CALLER_IS_FILEPATH and CALLER_IS_AUTHOR),  "It's impossible for two different functions to call this at the same time in the same call."
-	# If they're both False, I don't care. That situation is okay.
+	# If they're both False, then I don't care because that situation is okay.
 
 	m, idx_getAllGroups = matchobj, 0
 	matchedStr       =  m.group(idx_getAllGroups)
@@ -165,7 +169,8 @@ def printDebug_callback(matchobj: re.Match, replacement:bytes, DEBUG_LVL:int, ha
 		elif CALLER_IS_AUTHOR:
 			b_matchedItems   = m.expand(fr"\1".encode("utf-8"))
 			print(f"Matched items (byt):    {b_matchedItems}")
-	elif DEBUG_LVL>0:
+	
+	if DEBUG_LVL>1:
 		print("Replacement string (redactedBytes): ", replacement)
 
 	
@@ -271,7 +276,9 @@ def gapifyFilepathLMR(s:str) -> str:
 	return FP_GAP + FP_GAP.join([c for c in s]) + FP_GAP
 
 
-def stripSensitiveFilepath(data: str|bytes,  SLASH: str,  DEBUG_LVL: int) -> tuple[bytes, int]:
+def stripSensitiveFilepath(data: str|bytes,  SLASH: str,  DEBUG_LVL: int) \
+	-> tuple[bytes, int, list[bytes]]:
+
 	import re
 	# Convert string to bytestream so that file-reading and file-writing can occur, if used before this function is called.
 	if type(data) is str:
@@ -306,9 +313,11 @@ def stripSensitiveFilepath(data: str|bytes,  SLASH: str,  DEBUG_LVL: int) -> tup
 
 
 	hasPrintedAtLeastOnce = False
+	redactions = []
 	if DEBUG_LVL>0:
 		print(f"\nstripSensitiveFilepath():\nLooking for all strings that match the following RegEx pattern:\n* {findAsRegex}\n")
-		# print(f"\nstripSensitiveFilepath():\nLooking for all strings that match the following RegEx pattern:\n* {findAsRegex_gapped}\n")
+		# This was for Try #2.
+		# print(f"\nstripSensitiveFilepath():\nLooking for all strings that match the following RegEx pattern:\n* {findAsRegex_gapped}\n")	# Less verbose version of the below line.
 		# printFindAsRegex(findAsRegex_humanReadable, findAsRegex_b4gap, findAsRegex_gapped)
 	# findAsSingleLengthString = f"C:{SLASH}Users{SLASH}challenges{SLASH}".encode("utf-8")	# No Regex in here, no escape characters in here. Only raw characters.
 
@@ -364,6 +373,9 @@ def stripSensitiveFilepath(data: str|bytes,  SLASH: str,  DEBUG_LVL: int) -> tup
 			# Update the outer function's variable (now that the function is over, no longer depending on the variable being a constant value)
 			hasPrintedAtLeastOnce = True
 		
+		nonlocal redactions
+		redactions.append({m:replacement})
+		
 		assertEqualByteLengths(replacement, matchedStr)
 		
 
@@ -375,12 +387,15 @@ def stripSensitiveFilepath(data: str|bytes,  SLASH: str,  DEBUG_LVL: int) -> tup
 	# Try #1
 	findAsRegex = findAsRegex
 	replacedStr, numMatches = re.subn(pattern=findAsRegex, repl=replacementCallbackFunc, string=data)
-	return replacedStr, numMatches
+	return replacedStr, numMatches, redactions
 
 
 
 
-def stripAuthor(data: str|bytes, DEBUG_LVL: int) -> list[tuple[bytes, int]]:
+def stripAuthor(data: str|bytes, DEBUG_LVL: int) \
+	-> tuple[bytes, int, list[bytes]]:
+	# -> list[tuple[bytes, int, list[bytes]]]:
+
 	import re
 	# Convert string to bytestream so that file-reading and file-writing can occur, if used before this function is called.
 	if type(data) is str:
@@ -412,10 +427,14 @@ def stripAuthor(data: str|bytes, DEBUG_LVL: int) -> list[tuple[bytes, int]]:
 
 	if DEBUG_LVL>0:
 		printFindAsRegex(findAsRegex_humanReadable, findAsRegex_b4gap, findAsRegex_gapped)
+	if DEBUG_LVL>4:
+		# ONLY for testing the printFindAsRegex() function.
+		printFindAsRegex("".join(findAsRegex_humanReadable), "".join(findAsRegex_b4gap), "".join(findAsRegex_gapped))
 				
 
 
 	hasPrintedAtLeastOnce = False
+	redactions = []
 	def replacementCallbackFunc(matchobj: re.Match) -> bytes:
 		# Can't naively delete sensitive data since that messes up file's LUT of memory offsets. So, replace/overwrite it with garbage data of equivalent byte-length.
 		m, idx_getAllGroups = matchobj, 0
@@ -434,7 +453,9 @@ def stripAuthor(data: str|bytes, DEBUG_LVL: int) -> list[tuple[bytes, int]]:
 			printDebug_callback(m, replacement, DEBUG_LVL, hasPrintedAtLeastOnce, "Author")
 			hasPrintedAtLeastOnce = True
 		
-		
+		nonlocal redactions
+		redactions.append({m:replacement})
+
 		assertEqualByteLengths(replacement, matchedStr)
 		
 		return replacement
@@ -442,7 +463,7 @@ def stripAuthor(data: str|bytes, DEBUG_LVL: int) -> list[tuple[bytes, int]]:
 	replacedStrs, numMatches_list  =  2*[""], 2*[""]
 	replacedStrs[0], numMatches_list[0] = re.subn(pattern=findAsRegex_gapped[0].encode("utf-8"),   repl=replacementCallbackFunc,   string=data)
 	replacedStrs[1], numMatches_list[1] = re.subn(pattern=findAsRegex_gapped[1].encode("utf-8"),   repl=replacementCallbackFunc,   string=replacedStrs[0])
-	return replacedStrs[1], sum(numMatches_list)
+	return replacedStrs[1], sum(numMatches_list), redactions
 
 
 
@@ -535,8 +556,8 @@ Double occurrence but with newlines and tabs:
 
 
 """
-	redactedFilepaths, _ = stripSensitiveFilepath(example_filepath_testing_file, "/", DEBUG_LVL)
-	redactedAuthors,   _ = stripAuthor(example_author_testing_file, DEBUG_LVL)
+	redactedFilepaths, _, _ = stripSensitiveFilepath(example_filepath_testing_file, "/", DEBUG_LVL)
+	redactedAuthors,   _, _ = stripAuthor(example_author_testing_file, DEBUG_LVL)
 
 	print("[INFO]  You should NOT be able to see the author's name nor filepaths in these two outputs.")
 	print("Output file after redaction of filepaths:\n",     redactedFilepaths.decode("utf-8", errors="replace"))
@@ -592,6 +613,7 @@ def getInputFilepath() -> str:
 
 
 def redactFile(filepathToModify_notToRedactInsideFile:str, output_filepathToModify_notToRedactInsideFile:str,
+               PRINT_TO_NEW_FILE_EVEN_WHEN_UNCHANGED:bool,
 			   ACCIDENTAL_OVERWRITE_DELAY_SEC:int = 7, DEBUG_LVL:int = 2):
 	from time import sleep
 	inFile, outFile  =  filepathToModify_notToRedactInsideFile, output_filepathToModify_notToRedactInsideFile
@@ -627,13 +649,13 @@ def redactFile(filepathToModify_notToRedactInsideFile:str, output_filepathToModi
 	print("[TIP]  Valid debugging levels for RedactFilepathInsideFile:\n* 0[minimal]\n* 1\n* 2\n* 3\n* 4[maximal verbosity]\n")
 
 	with open(inFile, READ_BINARY) as f:
-		unredactedPaths_fileContents = f.read()
-		print(f"\nRead in {len(unredactedPaths_fileContents):,} bytes from file \"{inFile}\".\n")
+		unredactedFileContents = f.read()
+		print(f"\nRead in {len(unredactedFileContents):,} bytes from file \"{inFile}\".\n")
 
 
 	# Apply the redactions
-	redactedFilepath_fileContents, numReplacements_filepaths     = stripSensitiveFilepath(unredactedPaths_fileContents, SLASH, DEBUG_LVL)
-	redactedFilepathAuthor_fileContents, numReplacements_authors = stripAuthor(redactedFilepath_fileContents, DEBUG_LVL)
+	redactedFilepath_fileContents, numReplacements_filepaths, redactions_filepaths     = stripSensitiveFilepath(unredactedFileContents, SLASH, DEBUG_LVL)
+	redactedFilepathAuthor_fileContents, numReplacements_authors, redactions_authors = stripAuthor(redactedFilepath_fileContents, DEBUG_LVL)
 	# Shorten the variable name
 	redactedFileContents = redactedFilepathAuthor_fileContents
 
@@ -648,17 +670,31 @@ def redactFile(filepathToModify_notToRedactInsideFile:str, output_filepathToModi
 		print(redactedFilepath_fileContents)
 		print("\n\n* With both author and filepaths redacted:")
 		print(redactedFilepathAuthor_fileContents,"\n\n")
-	elif DEBUG_LVL>1:
+	elif DEBUG_LVL>2:
 		print("Redacted file contents (of both author and filepaths)(bytes):\n", redactedFilepathAuthor_fileContents,"\n\n")
 		print("Redacted file contents (of both author and filepaths)(str):\n",   redactedFilepathAuthor_fileContents.decode("utf-8", errors="replace"),"\n\n")
-	elif DEBUG_LVL>0:
+	elif DEBUG_LVL>1:
 		print("Redacted file contents (of both author and filepaths)(str):\n",   redactedFilepathAuthor_fileContents.decode("utf-8", errors="ignore"),"\n\n")
+	
+	if DEBUG_LVL>0:
+		print("Redactions performed:")
+		[print("*", f"{list(r.keys())[0]}...",  f"\n  {len(list(r.values())[0])} bytes redacted.")    for r in   redactions_filepaths + redactions_authors]
 
-	with open(outFile, WRITE_BINARY) as f:
-		f.write(redactedFileContents)
-	if DEBUG_LVL != 0:
-		print()
-	print(f"[INFO]  Wrote   {len(redactedFileContents):,} bytes to   file \"{outFile}\".\n")
+
+	doFileWrite = True
+	if unredactedFileContents == redactedFileContents:
+		print("[WARN]  Quantity of bytes that were redacted:  0")
+		if not PRINT_TO_NEW_FILE_EVEN_WHEN_UNCHANGED:
+			print("[INFO]  To 1) save wear on disk and 2) prevent downstream pipeline issues (if relevant/present) based on failed redaction,")
+			print("        **unchanged data will NOT be written to a new file.**")
+			doFileWrite = False
+	
+	if doFileWrite:
+		with open(outFile, WRITE_BINARY) as f:
+			f.write(redactedFileContents)
+		if DEBUG_LVL != 0:
+			print()
+		print(f"[INFO]  Wrote   {len(redactedFileContents):,} bytes to   file \"{outFile}\".\n")
 
 
 
@@ -676,6 +712,7 @@ def redactFile(filepathToModify_notToRedactInsideFile:str, output_filepathToModi
 DO_TEST = False
 USE_RELATED_FILEPATH = True
 USE_USER_PROVIDED_FILEPATH = True
+PRINT_TO_NEW_FILE_EVEN_WHEN_UNCHANGED = False
 
 if DO_TEST:
 	# runUnitTest(DEBUG_LVL = 5)
@@ -698,4 +735,4 @@ else:
 	
 	
 	# DEBUG_LVL=4 is Extremely verbose.  DEBUG_LVL=0 is Quiet
-	redactFile(filepathToModify_notToRedactInsideFile, output_filepathToModify_notToRedactInsideFile, DEBUG_LVL=1)
+	redactFile(filepathToModify_notToRedactInsideFile, output_filepathToModify_notToRedactInsideFile, PRINT_TO_NEW_FILE_EVEN_WHEN_UNCHANGED, DEBUG_LVL=1)
