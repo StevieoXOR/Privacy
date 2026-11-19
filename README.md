@@ -46,6 +46,8 @@ Names to search for.
 ## Examples
 <img alt="Example screenshot showing a terminal with debug-level text of a user redacting a filepath from a file's contents. Terminal shows the regex string used to perform the search, a vertically side-by-side comparison of the UTF-8 encoded bytestream found via the regex search <i>(Top)</i>, the plaintext string found via the regex search <i>(Bottom)</i>, and below those lines are the 4 possibly-different lengths of both the detected bytestream/string and its replacement bytestream/string, each length being on its own line while also containing the corresponding string that was used to generate that length value." src="assets/ExampleOfFilepathRedactionInsideFile.webp" width=1000 height=600>
 
+<img alt="Example screenshot showing the 3 interpretations of the findAsRegex string, how many times an arbitrary filepath entry and an arbitrary author entry was replaced, the byte indices (start and stop) of each replaced entry, and how many bytes were replaced per entry." src="assets/ExampleConsoleExecutionResults.png" width=800 height=1000>
+
 <br>
 <br>
 
